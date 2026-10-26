@@ -34,6 +34,8 @@ quotui  自选股 6                                              排序 自定�
 
 ## Installation
 
+No Go toolchain? Grab the archive for your platform from [Releases](https://github.com/ArkURL/quotui/releases) and run it.
+
 ```bash
 # requires Go 1.27 or newer
 go install github.com/arkurl/quotui@latest

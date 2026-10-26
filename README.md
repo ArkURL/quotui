@@ -32,6 +32,8 @@ quotui  自选股 6                                              排序 自定�
 
 ## 安装
 
+不想装 Go 的话，直接从 [Releases](https://github.com/ArkURL/quotui/releases) 下载对应平台的压缩包，解压即用。
+
 ```bash
 # 需要 Go 1.27 或更高版本
 go install github.com/arkurl/quotui@latest

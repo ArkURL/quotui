@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -21,8 +22,25 @@ import (
 	"github.com/arkurl/quotui/internal/ui"
 )
 
-// version 由发布流程通过 -ldflags 注入。
+// version 由发布流程通过 -ldflags 注入；未注入时回退到模块版本，
+// 这样 go install ...@v0.1.0 装出来的二进制也能报出真实版本。
 var version = "dev"
+
+func buildVersion() string {
+	if version != "dev" {
+		return version
+	}
+	bi, ok := debug.ReadBuildInfo()
+	if !ok {
+		return version
+	}
+	v := bi.Main.Version
+	// 只认正式的 tag 版本：伪版本（含 -0.）和本地改动（含 +dirty）都退回 dev。
+	if v == "" || v == "(devel)" || strings.Contains(v, "+") || strings.Contains(v, "-0.") {
+		return version
+	}
+	return strings.TrimPrefix(v, "v")
+}
 
 func main() {
 	once := flag.Bool("once", false, "抓取一次自选股行情，以纯文本输出后退出")
@@ -31,7 +49,7 @@ func main() {
 	flag.Parse()
 
 	if *showVersion {
-		fmt.Println("quotui " + version)
+		fmt.Println("quotui " + buildVersion())
 		return
 	}
 
