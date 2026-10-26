@@ -43,9 +43,10 @@ func within(t time.Time, spans ...[2]int) bool {
 }
 
 // AShare 判断 A 股是否处于连续竞价（含集合竞价）时段。
+// 已收录年份会排除法定休市日；未收录年份退化为只看星期。
 func AShare(t time.Time) bool {
 	lt := t.In(shanghai)
-	if !isWeekday(lt) {
+	if !isWeekday(lt) || isClosure(lt) {
 		return false
 	}
 	return within(lt, [2]int{9*60 + 15, 11*60 + 30}, [2]int{13 * 60, 15 * 60})
@@ -74,18 +75,26 @@ func IsAnyOpen(t time.Time) bool {
 
 // Summary 返回形如 "A股 交易中 · 港股 休市" 的状态摘要。
 func Summary(t time.Time) string {
+	aOpen := AShare(t)
+	// 未收录休市表的年份，在「交易中」后面加个问号，提示可能是节假日。
+	mark := ""
+	if aOpen && !CalendarKnown(t) {
+		mark = "?"
+	}
+
 	parts := make([]string, 0, 3)
 	for _, s := range []struct {
 		name string
 		open bool
+		mark string
 	}{
-		{"A股", AShare(t)},
-		{"港股", HK(t)},
-		{"美股", US(t)},
+		{"A股", aOpen, mark},
+		{"港股", HK(t), ""},
+		{"美股", US(t), ""},
 	} {
 		state := "休市"
 		if s.open {
-			state = "交易中"
+			state = "交易中" + s.mark
 		}
 		parts = append(parts, s.name+" "+state)
 	}

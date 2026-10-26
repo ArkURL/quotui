@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
+	"time"
 
 	"github.com/BurntSushi/toml"
 
@@ -23,6 +26,7 @@ type Config struct {
 	SortDesc       bool           `toml:"sort_desc"`
 	Cursor         int            `toml:"cursor"`
 	Columns        []string       `toml:"columns"`
+	Holidays       []string       `toml:"holidays"`
 	Watchlist      []quote.Symbol `toml:"watchlist"`
 }
 
@@ -96,6 +100,25 @@ func Save(path string, cfg *Config) error {
 	return os.Rename(tmp, path)
 }
 
+// cleanHolidays 校验并去重自定义休市日（YYYY-MM-DD）。
+func cleanHolidays(dates []string) []string {
+	seen := make(map[string]bool, len(dates))
+	out := make([]string, 0, len(dates))
+	for _, d := range dates {
+		d = strings.TrimSpace(d)
+		if _, err := time.Parse("2006-01-02", d); err != nil {
+			continue
+		}
+		if seen[d] {
+			continue
+		}
+		seen[d] = true
+		out = append(out, d)
+	}
+	sort.Strings(out)
+	return out
+}
+
 // Learn 用行情结果补全自选股缺失的名称与市场编号，返回是否有改动。
 // 市场编号很重要：美股的交易所前缀（105/106/107）无法从代码推断，
 // 从备用源学到后写回，主源下次才能正确定位。
@@ -163,6 +186,7 @@ func (c *Config) normalize() {
 		c.SortBy = "order"
 	}
 	c.Columns = cleanColumns(c.Columns)
+	c.Holidays = cleanHolidays(c.Holidays)
 	for i := range c.Watchlist {
 		if c.Watchlist[i].Market == "" {
 			c.Watchlist[i].Market = quote.InferMarket(c.Watchlist[i].Code)

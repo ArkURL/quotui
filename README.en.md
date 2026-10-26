@@ -87,6 +87,7 @@ color_scheme = "red_up"   # red_up (red = up, A-share convention) or green_up
 sort_by = "order"         # order / pct / amount / code
 sort_desc = true
 columns = ["code", "name", "price", "chg", "pct", "amount", "turnover"]
+holidays = []             # extra closed days, e.g. ["2027-01-01"]
 
 [[watchlist]]
   code = "600519"
@@ -97,6 +98,7 @@ columns = ["code", "name", "price", "chg", "pct", "amount", "turnover"]
 - `columns` sets which columns appear and in what order. Valid keys: `code`, `name`, `price`, `chg` (change), `pct` (percent), `amount`, `turnover`. On narrow terminals columns are dropped in the order turnover, amount, chg, price, code; name and pct always stay.
 - `secid` is optional and pins the venue id for HK and US symbols (for example `105.AAPL`). It is written automatically when you add a symbol with `a`, and backfilled from the fallback source if left empty.
 - Sort field, direction and cursor position are persisted, so a restart looks the same.
+- `holidays` supplements the built-in A-share calendar for years it does not cover (see [Limitations](#limitations)).
 
 ## Detail view
 
@@ -182,7 +184,8 @@ Eastmoney is the primary source and Tencent the fallback. Any failure (timeout, 
 ## Limitations
 
 - No tick-by-tick or WebSocket feed; the UI polls snapshots.
-- Trading-day detection only looks at weekday and session time, so public holidays are not handled.
+- A-share holidays for 2025-2026 are built in, derived from the index actual trading days. Hong Kong and US only check weekday and session time, and HK half-day sessions are not handled.
+- From 2027 onward you need to supply closed days through `holidays`; otherwise the app falls back to weekday logic and shows a `?` next to 交易中 to flag the uncovered year.
 - Minute-level candles come from Eastmoney only; that view reports an error when the primary is down.
 - All figures come straight from the endpoints and are for reference only, not investment advice.
 - The interface text is currently Chinese; English labels are not implemented yet.

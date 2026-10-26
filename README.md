@@ -85,6 +85,7 @@ color_scheme = "red_up"   # red_up（A 股习惯，红涨绿跌）或 green_up
 sort_by = "order"         # order / pct / amount / code
 sort_desc = true
 columns = ["code", "name", "price", "chg", "pct", "amount", "turnover"]
+holidays = []             # 额外休市日，如 ["2027-01-01"]，用于补充内置日历
 
 [[watchlist]]
   code = "600519"
@@ -95,6 +96,7 @@ columns = ["code", "name", "price", "chg", "pct", "amount", "turnover"]
 - `columns` 决定展示哪些列及顺序，可选 `code` / `name` / `price` / `chg` / `pct` / `amount` / `turnover`（`chg` 为涨跌额，`pct` 为涨跌幅）。终端变窄时按「换手 → 成交额 → 涨跌额 → 现价 → 代码」依次裁列，名称和涨幅始终保留。
 - `secid` 字段可选，用于固定港美股的市场编号（如 `105.AAPL`）。通过 `a` 键搜索添加时自动写入；手工填写时若留空，会在首次取到行情后回填。
 - 排序字段、升降序、光标位置都会写回配置，重启后保持原样。
+- `holidays` 用于补充内置休市表未覆盖的年份（详见[已知限制](#已知限制)）。
 
 ## 详情页
 
@@ -180,7 +182,8 @@ columns = ["code", "name", "price", "chg", "pct", "amount", "turnover"]
 ## 已知限制
 
 - 不支持逐笔 / WebSocket 推送，按秒级快照刷新。
-- 交易日判断只看星期和时段，不含法定节假日；港股半日市未单独处理。
+- A 股内置 2025–2026 休市表，由上证指数的实际交易日反推得到；港股、美股仍只看星期与时段，港股半日市未单独处理。
+- 2027 年起需自行补充休市日（`holidays` 配置项），否则按星期推断，状态栏会显示「A股 交易中?」提示该年日历未收录。
 - 分钟级 K 线只有东方财富提供，主源不可用时该视图会提示失败。
 - 数据以接口返回为准，仅供参考，不构成投资建议。
 

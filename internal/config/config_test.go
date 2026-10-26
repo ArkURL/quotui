@@ -67,6 +67,19 @@ func TestLearnBackfills(t *testing.T) {
 	}
 }
 
+func TestCleanHolidays(t *testing.T) {
+	got := cleanHolidays([]string{"2027-05-03", " 2027-01-01 ", "2027-01-01", "bad", "2027-13-01"})
+	want := []string{"2027-01-01", "2027-05-03"}
+	if len(got) != len(want) {
+		t.Fatalf("得到 %v", got)
+	}
+	for i := range want {
+		if got[i] != want[i] {
+			t.Errorf("第 %d 项 = %q，期望 %q", i, got[i], want[i])
+		}
+	}
+}
+
 func TestNormalize(t *testing.T) {
 	cfg := &Config{RefreshSeconds: -5, ColorScheme: "rainbow", Watchlist: []quote.Symbol{{Code: "600519"}}}
 	cfg.normalize()
