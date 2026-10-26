@@ -2,6 +2,8 @@
 
 # quotui
 
+[![CI](https://github.com/ArkURL/quotui/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/ArkURL/quotui/actions/workflows/ci.yml)
+[![Release](https://img.shields.io/github/v/release/ArkURL/quotui?color=3FBF6F)](https://github.com/ArkURL/quotui/releases)
 [![Go](https://img.shields.io/badge/Go-1.27-00ADD8?logo=go&logoColor=white)](https://go.dev)
 [![Platform](https://img.shields.io/badge/Platform-macOS%20%7C%20Linux%20%7C%20Windows-6e6e82)](#安装)
 [![Bubble Tea](https://img.shields.io/badge/Made%20with-Bubble%20Tea-ff69b4)](https://github.com/charmbracelet/bubbletea)
