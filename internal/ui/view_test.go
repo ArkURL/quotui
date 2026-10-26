@@ -34,7 +34,8 @@ func newTestModel(t *testing.T, w, h int) *Model {
 	cfg := config.Default()
 	m := New(cfg, filepath.Join(t.TempDir(), "config.toml"), fakeProvider{})
 	m.width, m.height = w, h
-	m.now = time.Date(2026, 10, 26, 10, 0, 0, 0, time.Local)
+	// 固定用东八区，否则在 UTC 机器上 10:00 会落在 A 股收盘后，测试结果随时区漂移。
+	m.now = time.Date(2026, 10, 26, 10, 0, 0, 0, time.FixedZone("CST", 8*3600))
 	for i, s := range cfg.Watchlist {
 		m.quotes[s.Key()] = quote.Quote{
 			Symbol:    s,
