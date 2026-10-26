@@ -21,10 +21,19 @@ import (
 	"github.com/arkurl/quotui/internal/ui"
 )
 
+// version 由发布流程通过 -ldflags 注入。
+var version = "dev"
+
 func main() {
 	once := flag.Bool("once", false, "抓取一次自选股行情，以纯文本输出后退出")
 	cfgPath := flag.String("config", "", "配置文件路径")
+	showVersion := flag.Bool("version", false, "打印版本号后退出")
 	flag.Parse()
+
+	if *showVersion {
+		fmt.Println("quotui " + version)
+		return
+	}
 
 	path := *cfgPath
 	if path == "" {
