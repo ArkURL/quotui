@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +23,8 @@ var sortFields = map[string]bool{"order": true, "pct": true, "amount": true, "co
 type Config struct {
 	RefreshSeconds int            `toml:"refresh_seconds"`
 	ColorScheme    string         `toml:"color_scheme"`
+	UpColor        string         `toml:"up_color"`
+	DownColor      string         `toml:"down_color"`
 	SortBy         string         `toml:"sort_by"`
 	SortDesc       bool           `toml:"sort_desc"`
 	Cursor         int            `toml:"cursor"`
@@ -98,6 +101,22 @@ func Save(path string, cfg *Config) error {
 		return err
 	}
 	return os.Rename(tmp, path)
+}
+
+// NormalizeHex 把 #RGB / #RRGGBB / 无井号 统一成 #RRGGBB，非法输入返回空串。
+func NormalizeHex(s string) string {
+	s = strings.TrimSpace(s)
+	s = strings.TrimPrefix(s, "#")
+	if len(s) == 3 {
+		s = string([]byte{s[0], s[0], s[1], s[1], s[2], s[2]})
+	}
+	if len(s) != 6 {
+		return ""
+	}
+	if _, err := strconv.ParseUint(s, 16, 32); err != nil {
+		return ""
+	}
+	return "#" + strings.ToUpper(s)
 }
 
 // cleanHolidays 校验并去重自定义休市日（YYYY-MM-DD）。
@@ -182,6 +201,9 @@ func (c *Config) normalize() {
 	if c.ColorScheme != "green_up" {
 		c.ColorScheme = "red_up"
 	}
+	// 非法颜色清空，回落到 color_scheme 的默认值。
+	c.UpColor = NormalizeHex(c.UpColor)
+	c.DownColor = NormalizeHex(c.DownColor)
 	if !sortFields[c.SortBy] {
 		c.SortBy = "order"
 	}

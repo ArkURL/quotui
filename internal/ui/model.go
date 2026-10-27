@@ -86,6 +86,14 @@ type addState struct {
 	err       error
 }
 
+type colorState struct {
+	active  bool
+	cursor  int
+	editing bool
+	input   textinput.Model
+	err     string
+}
+
 type pickerState struct {
 	active bool
 	cursor int
@@ -149,6 +157,7 @@ type Model struct {
 
 	add    addState
 	picker pickerState
+	color  colorState
 	detail detailState
 
 	chartMode chartMode
@@ -289,6 +298,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) handleKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
+	if m.color.active {
+		return m.handleColorKey(k)
+	}
 	if m.picker.active {
 		return m.handlePickerKey(k)
 	}
@@ -326,6 +338,8 @@ func (m *Model) handleKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.manualFetch()
 	case "t":
 		m.openPicker()
+	case "C":
+		m.openColor()
 	case " ":
 		m.paused = !m.paused
 		if m.paused {

@@ -93,6 +93,7 @@ Volume units follow the market: lots for A-shares, shares for Hong Kong and US.
 | `Esc` | Back to the list |
 | `r` | Refresh now (1 second cooldown) |
 | `t` | Pick a refresh interval (including manual only) |
+| `C` | Up/down colours (custom, with restore defaults) |
 | `Space` | Pause / resume auto refresh |
 | `s` / `S` | Cycle sort field / toggle direction |
 | `a` / `d` | Add / remove a symbol |
@@ -105,6 +106,8 @@ Volume units follow the market: lots for A-shares, shares for Hong Kong and US.
 ```toml
 refresh_seconds = 3       # 3s auto refresh; 0 means manual only (press r)
 color_scheme = "red_up"   # red_up (red = up, A-share convention) or green_up
+up_color = ""             # custom up colour, e.g. "#B08968"; empty follows color_scheme
+down_color = ""           # custom down colour, e.g. "#6D8A96"
 sort_by = "order"         # order / pct / amount / code
 sort_desc = true
 columns = ["code", "name", "price", "chg", "pct", "amount", "turnover"]
@@ -119,6 +122,7 @@ holidays = []             # extra closed days, e.g. ["2027-01-01"]
 - `columns` sets which columns appear and in what order. Valid keys: `code`, `name`, `price`, `chg` (change), `pct` (percent), `amount`, `turnover`. On narrow terminals columns are dropped in the order turnover, amount, chg, price, code; name and pct always stay.
 - `secid` is optional and pins the venue id for HK and US symbols (for example `105.AAPL`). It is written automatically when you add a symbol with `a`, and backfilled from the fallback source if left empty.
 - Sort field, direction and cursor position are persisted, so a restart looks the same.
+- `up_color` / `down_color` accept `#RGB` and `#RRGGBB`; invalid values are ignored and fall back to `color_scheme`. Press `C` to edit them in place; choosing "restore defaults" clears the custom colours and returns to red-up.
 - `holidays` supplements the built-in A-share calendar for years it does not cover (see [Limitations](#limitations)).
 
 ## Detail view
@@ -171,6 +175,8 @@ Press `c` in the detail view, then `p` to cycle daily / weekly / monthly / 60 mi
 - Bodies are solid blocks and wicks are vertical bars. Red means up by default; `green_up` swaps them.
 - Each candle takes two columns (body plus gap) and falls back to one column when space is tight. Newest candle is pinned to the right edge.
 - Daily candles use forward-adjusted prices. Weekly and monthly look back far enough and then keep the latest 120 bars.
+
+> Red and green drawing too much attention? Press `C` and use low-saturation colours such as `#B08968` for up and `#6D8A96` for down: still distinguishable, far less obvious.
 
 ## Refresh policy
 

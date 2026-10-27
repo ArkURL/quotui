@@ -99,3 +99,32 @@ func TestNormalize(t *testing.T) {
 		t.Errorf("Market = %q", cfg.Watchlist[0].Market)
 	}
 }
+
+func TestNormalizeHex(t *testing.T) {
+	cases := map[string]string{
+		"#f2575b": "#F2575B",
+		"f2575b":  "#F2575B",
+		"#abc":    "#AABBCC",
+		" abc ":   "#AABBCC",
+		"":        "",
+		"red":     "",
+		"#12345":  "",
+		"#GGGGGG": "",
+	}
+	for in, want := range cases {
+		if got := NormalizeHex(in); got != want {
+			t.Errorf("NormalizeHex(%q) = %q，期望 %q", in, got, want)
+		}
+	}
+}
+
+func TestNormalizeClearsBadColors(t *testing.T) {
+	cfg := &Config{UpColor: "红色", DownColor: "00ff00"}
+	cfg.normalize()
+	if cfg.UpColor != "" {
+		t.Errorf("非法颜色应清空，得到 %q", cfg.UpColor)
+	}
+	if cfg.DownColor != "#00FF00" {
+		t.Errorf("合法颜色应规范化，得到 %q", cfg.DownColor)
+	}
+}

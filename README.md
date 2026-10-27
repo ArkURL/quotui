@@ -103,6 +103,8 @@ quotui -json | jq -r '.quotes[] | select(.change_pct > 5) | "\(.name) \(.change_
 ```toml
 refresh_seconds = 3       # 3 秒自动刷新；0 表示只用 r 手动刷新
 color_scheme = "red_up"   # red_up（A 股习惯，红涨绿跌）或 green_up
+up_color = ""             # 自定义上涨色，如 "#B08968"；留空跟随 color_scheme
+down_color = ""           # 自定义下跌色，如 "#6D8A96"；留空跟随 color_scheme
 sort_by = "order"         # order / pct / amount / code
 sort_desc = true
 columns = ["code", "name", "price", "chg", "pct", "amount", "turnover"]
@@ -117,6 +119,7 @@ holidays = []             # 额外休市日，如 ["2027-01-01"]，用于补充�
 - `columns` 决定展示哪些列及顺序，可选 `code` / `name` / `price` / `chg` / `pct` / `amount` / `turnover`（`chg` 为涨跌额，`pct` 为涨跌幅）。终端变窄时按「换手 → 成交额 → 涨跌额 → 现价 → 代码」依次裁列，名称和涨幅始终保留。
 - `secid` 字段可选，用于固定港美股的市场编号（如 `105.AAPL`）。通过 `a` 键搜索添加时自动写入；手工填写时若留空，会在首次取到行情后回填。
 - 排序字段、升降序、光标位置都会写回配置，重启后保持原样。
+- `up_color` / `down_color` 支持 `#RGB` 与 `#RRGGBB`，非法值会被忽略并回落到 `color_scheme`。按 `C` 可以直接在界面里改，选「恢复默认」即清空自定义色并切回红涨绿跌。
 - `holidays` 用于补充内置休市表未覆盖的年份（详见[已知限制](#已知限制)）。
 
 ## 详情页
@@ -169,6 +172,8 @@ holidays = []             # 额外休市日，如 ["2027-01-01"]，用于补充�
 - 实体用实心块，影线用竖线；默认红涨绿跌，`green_up` 主题下互换。
 - 每根 K 线占 2 列（实体 + 间隔），宽度不足时降为 1 列；右对齐，最新一根贴住右边缘。
 - 日线用前复权数据；周/月线按周期回溯足够长的历史，再截取最近 120 根。
+
+> 嫌红绿太跳？按 `C` 换成低饱和配色，例如上涨 `#B08968`、下跌 `#6D8A96`，涨跌仍可分但不再刺眼。
 
 ## 刷新策略
 

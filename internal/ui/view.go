@@ -34,15 +34,10 @@ func (t themeStyles) sign(v float64) lipgloss.Style {
 }
 
 func (m *Model) theme() themeStyles {
-	red := lipgloss.NewStyle().Foreground(lipgloss.Color("#F2575B"))
-	green := lipgloss.NewStyle().Foreground(lipgloss.Color("#3FBF6F"))
-	up, down := red, green
-	if m.cfg.ColorScheme == "green_up" {
-		up, down = green, red
-	}
+	upHex, downHex := m.upDownHex()
 	return themeStyles{
-		up:     up,
-		down:   down,
+		up:     lipgloss.NewStyle().Foreground(lipgloss.Color(upHex)),
+		down:   lipgloss.NewStyle().Foreground(lipgloss.Color(downHex)),
 		flat:   lipgloss.NewStyle().Foreground(lipgloss.Color("#9A9AAE")),
 		dim:    lipgloss.NewStyle().Foreground(lipgloss.Color("#6E6E82")),
 		accent: lipgloss.NewStyle().Foreground(lipgloss.Color("#7FD1E8")),
@@ -64,6 +59,9 @@ func (m *Model) View() string {
 	}
 	if m.picker.active {
 		return m.pickerView(th)
+	}
+	if m.color.active {
+		return m.colorView(th)
 	}
 	if m.detail.active {
 		return m.detailView(th)
@@ -366,6 +364,7 @@ func (m *Model) helpView(th themeStyles) string {
 		{"a / d", "添加 / 删除自选"},
 		{"J / K", "调整自定义顺序"},
 		{"t", "刷新周期（含仅手动）"},
+		{"C", "涨跌配色"},
 		{"? / q", "帮助 / 退出"},
 	}
 
