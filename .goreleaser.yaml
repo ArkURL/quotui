@@ -39,8 +39,25 @@ snapshot:
 
 changelog:
   sort: asc
+  # 去掉提交 hash，只留正文
+  format: "{{ .Message }}"
+  groups:
+    - title: 新增
+      regexp: '^feat'
+      order: 0
+    - title: 修复
+      regexp: '^fix'
+      order: 1
+    - title: 其他
+      order: 999
   filters:
     exclude:
       - "^docs:"
       - "^test:"
       - "^chore:"
+      - "^ci:"
+
+release:
+  footer: |
+    **安装**：`go install github.com/arkurl/quotui@latest`，或下载下方对应平台的压缩包解压即用。
+    首次运行会在系统配置目录生成默认配置，按 `?` 查看快捷键。
