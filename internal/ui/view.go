@@ -378,7 +378,7 @@ func (m *Model) helpView(th themeStyles) string {
 		b.WriteString("\n")
 	}
 	b.WriteString("\n")
-	b.WriteString(th.dim.Render("按任意键返回"))
+	b.WriteString(th.dim.Render("quotui " + Version + " · 按任意键返回"))
 
 	box := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).

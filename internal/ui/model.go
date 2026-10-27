@@ -124,6 +124,9 @@ type detailState struct {
 	at      time.Time
 }
 
+// Version 由 main 注入，仅用于帮助页展示，方便确认实际运行的版本。
+var Version = "dev"
+
 // Model 是 quotui 的主界面状态。
 type Model struct {
 	cfg  *config.Config

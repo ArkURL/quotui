@@ -100,3 +100,15 @@ func TestFitText(t *testing.T) {
 		t.Errorf("期望 abc…，得到 %q", got)
 	}
 }
+
+func TestHelpShowsVersion(t *testing.T) {
+	old := Version
+	Version = "9.9.9"
+	t.Cleanup(func() { Version = old })
+
+	m := newTestModel(t, 80, 24)
+	m.showHelp = true
+	if !strings.Contains(m.View(), "quotui 9.9.9") {
+		t.Errorf("帮助页应显示版本号:\n%s", m.View())
+	}
+}

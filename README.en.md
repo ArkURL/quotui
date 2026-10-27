@@ -50,6 +50,8 @@ go build -o quotui .
 
 The result is a single static binary with no runtime dependencies.
 
+> With several copies on the machine, the first entry of `which -a quotui` is the one that runs. Press `?` — the help footer shows the version, which is the quickest way to confirm. An older build will drop config keys it does not know about when it saves.
+
 ## Quick start
 
 ```bash

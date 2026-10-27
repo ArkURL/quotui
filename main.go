@@ -73,6 +73,7 @@ func main() {
 	// 东财字段最全，腾讯作为备用源；任一可用即可。
 	// 自定义休市日并入内置日历，用于判断是否休市。
 	market.AddClosures(cfg.Holidays)
+	ui.Version = buildVersion()
 
 	prov := failover.New(eastmoney.New(), tencent.New())
 	if *jsonOut {
