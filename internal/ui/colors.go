@@ -16,6 +16,29 @@ const (
 	defaultDownColor = "#3FBF6F"
 )
 
+// colorPreset 是一套预设配色。
+// scheme 非空表示用 color_scheme 表达（清空自定义色），否则直接写死两个颜色。
+type colorPreset struct {
+	name   string
+	scheme string
+	up     string
+	down   string
+}
+
+var colorPresets = []colorPreset{
+	{name: "A股 红涨绿跌", scheme: "red_up"},
+	{name: "港美股 绿涨红跌", scheme: "green_up"},
+	{name: "低调 暖橙灰蓝", up: "#B08968", down: "#6D8A96"},
+	{name: "色弱 橙蓝", up: "#E69F00", down: "#56B4E9"},
+}
+
+// 弹窗里的行：先是预设，然后是自定义与恢复默认。
+const (
+	colorRowUp    = 4
+	colorRowDown  = 5
+	colorRowReset = 6
+)
+
 // upDownHex 返回当前生效的涨跌颜色：先按 color_scheme 取默认值，
 // 再被 up_color / down_color 的自定义色覆盖。
 func (m *Model) upDownHex() (string, string) {
@@ -30,6 +53,24 @@ func (m *Model) upDownHex() (string, string) {
 		down = c
 	}
 	return up, down
+}
+
+// presetColors 返回某套预设对应的颜色。
+func presetColors(p colorPreset) (string, string) {
+	if p.scheme == "" {
+		return p.up, p.down
+	}
+	up, down := defaultUpColor, defaultDownColor
+	if p.scheme == "green_up" {
+		up, down = down, up
+	}
+	return up, down
+}
+
+func (m *Model) isCurrentPreset(p colorPreset) bool {
+	up, down := presetColors(p)
+	curUp, curDown := m.upDownHex()
+	return curUp == up && curDown == down
 }
 
 func (m *Model) openColor() {
@@ -79,26 +120,41 @@ func (m *Model) handleColorKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.color.cursor--
 		}
 	case "down", "j":
-		if m.color.cursor < 2 {
+		if m.color.cursor < colorRowReset {
 			m.color.cursor++
 		}
 	case "enter":
-		switch m.color.cursor {
-		case 0, 1:
+		switch {
+		case m.color.cursor < len(colorPresets):
+			m.applyPreset(colorPresets[m.color.cursor])
+		case m.color.cursor == colorRowReset:
+			m.applyPreset(colorPresets[0])
+		default:
 			up, down := m.upDownHex()
 			cur := up
-			if m.color.cursor == 1 {
+			if m.color.cursor == colorRowDown {
 				cur = down
 			}
 			m.color.editing = true
 			m.color.err = ""
 			m.color.input.SetValue(cur)
 			return m, m.color.input.Focus()
-		case 2:
-			m.resetColors()
 		}
 	}
 	return m, nil
+}
+
+func (m *Model) applyPreset(p colorPreset) {
+	if p.scheme != "" {
+		m.cfg.ColorScheme = p.scheme
+		m.cfg.UpColor = ""
+		m.cfg.DownColor = ""
+	} else {
+		up, down := presetColors(p)
+		m.cfg.UpColor = up
+		m.cfg.DownColor = down
+	}
+	_ = config.Save(m.path, m.cfg)
 }
 
 func (m *Model) applyColorInput() {
@@ -107,7 +163,7 @@ func (m *Model) applyColorInput() {
 		m.color.err = "颜色格式应为 #RGB 或 #RRGGBB"
 		return
 	}
-	if m.color.cursor == 1 {
+	if m.color.cursor == colorRowDown {
 		m.cfg.DownColor = hex
 	} else {
 		m.cfg.UpColor = hex
@@ -118,18 +174,10 @@ func (m *Model) applyColorInput() {
 	m.color.input.Blur()
 }
 
-// resetColors 清掉自定义色并回到默认的红涨绿跌。
-func (m *Model) resetColors() {
-	m.cfg.UpColor = ""
-	m.cfg.DownColor = ""
-	m.cfg.ColorScheme = "red_up"
-	_ = config.Save(m.path, m.cfg)
-}
-
 func (m *Model) colorView(th themeStyles) string {
 	boxW := m.width - 6
-	if boxW > 46 {
-		boxW = 46
+	if boxW > 50 {
+		boxW = 50
 	}
 	if boxW < 26 {
 		boxW = 26
@@ -144,17 +192,16 @@ func (m *Model) colorView(th themeStyles) string {
 	b.WriteString(th.title.Render("涨跌配色"))
 	b.WriteString("\n\n")
 
-	b.WriteString(m.colorRow(th, 0, "上涨颜色", upHex, upStyle, m.cfg.UpColor != "", innerW))
+	for i, p := range colorPresets {
+		b.WriteString(m.presetRow(th, i, p, innerW))
+		b.WriteString("\n")
+	}
+
+	b.WriteString(m.colorRow(th, colorRowUp, "上涨颜色", upHex, upStyle, m.cfg.UpColor != "", innerW))
 	b.WriteString("\n")
-	b.WriteString(m.colorRow(th, 1, "下降颜色", downHex, downStyle, m.cfg.DownColor != "", innerW))
+	b.WriteString(m.colorRow(th, colorRowDown, "下降颜色", downHex, downStyle, m.cfg.DownColor != "", innerW))
 	b.WriteString("\n")
 	b.WriteString(m.colorResetRow(th))
-
-	b.WriteString("\n\n")
-	b.WriteString(th.dim.Render("预览  "))
-	b.WriteString(upStyle.Render("+1.23% ▲"))
-	b.WriteString(th.dim.Render("     "))
-	b.WriteString(downStyle.Render("-0.37% ▼"))
 
 	if m.color.err != "" {
 		b.WriteString("\n\n")
@@ -162,7 +209,7 @@ func (m *Model) colorView(th themeStyles) string {
 	}
 
 	b.WriteString("\n\n")
-	hint := "Enter 编辑 · ↑↓ 选择 · Esc 返回"
+	hint := "Enter 应用 · ↑↓ 选择 · Esc 返回"
 	if m.color.editing {
 		hint = "Enter 确认 · Esc 取消"
 	}
@@ -177,12 +224,34 @@ func (m *Model) colorView(th themeStyles) string {
 	return lipgloss.Place(m.width, m.height, lipgloss.Center, lipgloss.Center, box)
 }
 
+func (m *Model) presetRow(th themeStyles, idx int, p colorPreset, innerW int) string {
+	upHex, downHex := presetColors(p)
+	upStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(upHex))
+	downStyle := lipgloss.NewStyle().Foreground(lipgloss.Color(downHex))
+
+	line := "  "
+	if m.color.cursor == idx {
+		line = th.accent.Render("▌ ")
+	}
+	line += th.normal.Render(padRight(p.name, 16))
+
+	if innerW >= 31 {
+		line += upStyle.Render("+1.23%")
+		line += th.dim.Render(" ")
+		line += downStyle.Render("-0.37%")
+	}
+	if m.isCurrentPreset(p) && innerW >= 37 {
+		line += th.dim.Render(" 当前")
+	}
+	return line
+}
+
 func (m *Model) colorRow(th themeStyles, idx int, label, hex string, swatch lipgloss.Style, custom bool, innerW int) string {
 	line := "  "
 	if m.color.cursor == idx {
 		line = th.accent.Render("▌ ")
 	}
-	line += th.normal.Render(padRight(label, 10))
+	line += th.normal.Render(padRight(label, 16))
 
 	if m.color.editing && m.color.cursor == idx {
 		return line + m.color.input.View()
@@ -201,8 +270,8 @@ func (m *Model) colorRow(th themeStyles, idx int, label, hex string, swatch lipg
 
 func (m *Model) colorResetRow(th themeStyles) string {
 	line := "  "
-	if m.color.cursor == 2 {
+	if m.color.cursor == colorRowReset {
 		line = th.accent.Render("▌ ")
 	}
-	return line + th.normal.Render("恢复默认（红涨绿跌）")
+	return line + th.normal.Render("恢复默认（A股 红涨绿跌）")
 }

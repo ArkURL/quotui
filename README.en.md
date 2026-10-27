@@ -93,7 +93,7 @@ Volume units follow the market: lots for A-shares, shares for Hong Kong and US.
 | `Esc` | Back to the list |
 | `r` | Refresh now (1 second cooldown) |
 | `t` | Pick a refresh interval (including manual only) |
-| `C` | Up/down colours (custom, with restore defaults) |
+| `C` | Up/down colours (4 presets, custom, restore defaults) |
 | `Space` | Pause / resume auto refresh |
 | `s` / `S` | Cycle sort field / toggle direction |
 | `a` / `d` | Add / remove a symbol |
@@ -122,7 +122,17 @@ holidays = []             # extra closed days, e.g. ["2027-01-01"]
 - `columns` sets which columns appear and in what order. Valid keys: `code`, `name`, `price`, `chg` (change), `pct` (percent), `amount`, `turnover`. On narrow terminals columns are dropped in the order turnover, amount, chg, price, code; name and pct always stay.
 - `secid` is optional and pins the venue id for HK and US symbols (for example `105.AAPL`). It is written automatically when you add a symbol with `a`, and backfilled from the fallback source if left empty.
 - Sort field, direction and cursor position are persisted, so a restart looks the same.
-- `up_color` / `down_color` accept `#RGB` and `#RRGGBB`; invalid values are ignored and fall back to `color_scheme`. Press `C` to edit them in place; choosing "restore defaults" clears the custom colours and returns to red-up.
+- Press `C` for the colour panel. Four presets are built in and applied immediately:
+
+  | Preset | Up | Down |
+  |---|---|---|
+  | A-shares, red up | `#F2575B` | `#3FBF6F` |
+  | HK/US, green up | `#3FBF6F` | `#F2575B` |
+  | Muted amber / slate | `#B08968` | `#6D8A96` |
+  | Colour-blind safe | `#E69F00` | `#56B4E9` |
+
+- The first two are expressed through `color_scheme` (clearing custom colours); the other two write `up_color` / `down_color`. Each colour row also accepts typed input: `#RGB` and `#RRGGBB` work, invalid input is ignored and falls back to `color_scheme`.
+- "Restore defaults" clears the custom colours and returns `color_scheme` to `red_up`. The active preset is marked; after editing a colour by hand no preset matches.
 - `holidays` supplements the built-in A-share calendar for years it does not cover (see [Limitations](#limitations)).
 
 ## Detail view
@@ -176,7 +186,7 @@ Press `c` in the detail view, then `p` to cycle daily / weekly / monthly / 60 mi
 - Each candle takes two columns (body plus gap) and falls back to one column when space is tight. Newest candle is pinned to the right edge.
 - Daily candles use forward-adjusted prices. Weekly and monthly look back far enough and then keep the latest 120 bars.
 
-> Red and green drawing too much attention? Press `C` and use low-saturation colours such as `#B08968` for up and `#6D8A96` for down: still distinguishable, far less obvious.
+> Red and green drawing too much attention? Press `C` and pick the muted amber/slate preset: still distinguishable, far less obvious. For red-green colour blindness, the orange/blue preset is a better fit.
 
 ## Refresh policy
 

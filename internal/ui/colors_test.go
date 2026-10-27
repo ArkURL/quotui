@@ -30,13 +30,64 @@ func TestUpDownHex(t *testing.T) {
 	}
 }
 
+func TestColorPresetsApply(t *testing.T) {
+	if len(colorPresets) != 4 || colorRowUp != 4 || colorRowReset != 6 {
+		t.Fatalf("预设数量与行号常量不一致: %d", len(colorPresets))
+	}
+
+	for i, p := range colorPresets {
+		m := newTestModel(t, 100, 30)
+		m = press(m, runeKey('C'))
+		m.color.cursor = i
+
+		upd, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+		m = upd.(*Model)
+
+		wantUp, wantDown := presetColors(p)
+		if up, down := m.upDownHex(); up != wantUp || down != wantDown {
+			t.Errorf("预设 %q 生效颜色 = %s/%s，期望 %s/%s", p.name, up, down, wantUp, wantDown)
+		}
+
+		// scheme 型预设应清空自定义色，调色板型预设应写死自定义色
+		if p.scheme != "" {
+			if m.cfg.UpColor != "" || m.cfg.DownColor != "" {
+				t.Errorf("预设 %q 应清空自定义色", p.name)
+			}
+			if m.cfg.ColorScheme != p.scheme {
+				t.Errorf("预设 %q 的 scheme = %q", p.name, m.cfg.ColorScheme)
+			}
+		} else if m.cfg.UpColor != p.up || m.cfg.DownColor != p.down {
+			t.Errorf("预设 %q 未写入配置: %q/%q", p.name, m.cfg.UpColor, m.cfg.DownColor)
+		}
+	}
+}
+
+func TestPresetSwitchesFromGlobalToAShare(t *testing.T) {
+	m := newTestModel(t, 100, 30)
+	m = press(m, runeKey('C'))
+
+	// 切到港美股：绿涨红跌
+	m.color.cursor = 1
+	upd, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = upd.(*Model)
+	if up, _ := m.upDownHex(); up != defaultDownColor {
+		t.Errorf("港美股预设上涨色 = %s", up)
+	}
+
+	// 再切回 A 股
+	m.color.cursor = 0
+	upd, _ = m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	m = upd.(*Model)
+	if up, down := m.upDownHex(); up != defaultUpColor || down != defaultDownColor {
+		t.Errorf("切回 A 股后 = %s/%s", up, down)
+	}
+}
+
 func TestColorModalEditsUpColor(t *testing.T) {
 	m := newTestModel(t, 100, 30)
 
 	m = press(m, runeKey('C'))
-	if !m.color.active {
-		t.Fatal("C 应打开配色弹窗")
-	}
+	m.color.cursor = colorRowUp
 
 	upd, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = upd.(*Model)
@@ -58,14 +109,18 @@ func TestColorModalEditsUpColor(t *testing.T) {
 	if m.color.editing {
 		t.Error("确认后应退出编辑")
 	}
-	if up, _ := m.upDownHex(); up != "#5A5A6E" {
-		t.Errorf("生效颜色 = %q", up)
+	// 自定义色不再匹配任何预设
+	for _, p := range colorPresets {
+		if m.isCurrentPreset(p) {
+			t.Errorf("自定义色不应命中预设 %q", p.name)
+		}
 	}
 }
 
 func TestColorModalRejectsInvalid(t *testing.T) {
 	m := newTestModel(t, 100, 30)
 	m = press(m, runeKey('C'))
+	m.color.cursor = colorRowUp
 
 	upd, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = upd.(*Model)
@@ -83,7 +138,6 @@ func TestColorModalRejectsInvalid(t *testing.T) {
 		t.Error("报错后应停留在编辑态")
 	}
 
-	// Esc 取消编辑，改动丢弃
 	upd, _ = m.Update(tea.KeyMsg{Type: tea.KeyEsc})
 	m = upd.(*Model)
 	if m.color.editing {
@@ -101,8 +155,7 @@ func TestColorReset(t *testing.T) {
 	m.cfg.ColorScheme = "green_up"
 
 	m = press(m, runeKey('C'))
-	m = press(m, tea.KeyMsg{Type: tea.KeyDown})
-	m = press(m, tea.KeyMsg{Type: tea.KeyDown})
+	m.color.cursor = colorRowReset
 	upd, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = upd.(*Model)
 
@@ -117,29 +170,34 @@ func TestColorReset(t *testing.T) {
 	}
 }
 
-func TestColorViewShowsCurrent(t *testing.T) {
+func TestColorViewShowsPresetsAndCurrent(t *testing.T) {
 	m := newTestModel(t, 100, 30)
 	m.cfg.UpColor = "#5A5A6E"
 	m = press(m, runeKey('C'))
 
 	out := m.View()
-	if !strings.Contains(out, "#5A5A6E") {
-		t.Errorf("弹窗应显示当前上涨色:\n%s", out)
+	for _, want := range []string{"A股 红涨绿跌", "港美股 绿涨红跌", "低调 暖橙灰蓝", "色弱 橙蓝", "#5A5A6E", "恢复默认"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("弹窗缺少 %q:\n%s", want, out)
+		}
 	}
-	if !strings.Contains(out, "恢复默认") {
-		t.Error("应有恢复默认选项")
+	if strings.Contains(out, "当前") {
+		t.Error("自定义色不该把某个预设标成当前")
 	}
-	if !strings.Contains(out, "预览") {
-		t.Error("应有颜色预览")
+
+	// 默认状态下 A 股预设应标为当前
+	n := newTestModel(t, 100, 30)
+	n = press(n, runeKey('C'))
+	if !strings.Contains(n.View(), "当前") {
+		t.Errorf("默认应把 A 股预设标成当前:\n%s", n.View())
 	}
 }
 
 func TestColorModalFits(t *testing.T) {
-	for _, size := range [][2]int{{100, 30}, {60, 20}, {44, 14}} {
+	for _, size := range [][2]int{{100, 30}, {60, 20}, {44, 16}} {
 		m := newTestModel(t, size[0], size[1])
 		m = press(m, runeKey('C'))
-		lines := strings.Split(m.View(), "\n")
-		for i, ln := range lines {
+		for i, ln := range strings.Split(m.View(), "\n") {
 			if w := lipgloss.Width(ln); w > m.width {
 				t.Errorf("%dx%d 第 %d 行宽 %d 超出", size[0], size[1], i, w)
 			}
