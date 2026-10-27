@@ -61,6 +61,13 @@ func (c *Chain) Name() string {
 	return out
 }
 
+// Active 返回当前生效的数据源名称，不含熔断等展示信息，适合机器消费。
+func (c *Chain) Active() string {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.active
+}
+
 func (c *Chain) Quotes(ctx context.Context, symbols []quote.Symbol) ([]quote.Quote, error) {
 	if len(symbols) == 0 {
 		return nil, nil

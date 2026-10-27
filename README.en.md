@@ -55,7 +55,9 @@ The result is a single static binary with no runtime dependencies.
 ```bash
 quotui                  # open the TUI
 quotui -once            # fetch once, print plain text, exit
+quotui -json            # fetch once, print JSON (implies -once)
 quotui -config ./c.toml # use a custom config file
+quotui -version         # print version
 ```
 
 On first run a default config is written to the system config directory, preloaded with six symbols:
@@ -63,6 +65,21 @@ On first run a default config is written to the system config directory, preload
 - macOS: `~/Library/Application Support/quotui/config.toml`
 - Linux: `~/.config/quotui/config.toml`
 - Windows: `%AppData%\quotui\config.toml`
+
+### Scripting
+
+`-json` emits a structured snapshot that pipes straight into jq:
+
+```bash
+# symbols up more than 5%
+quotui -json | jq -r '.quotes[] | select(.change_pct > 5) | "\(.name) \(.change_pct)%"'
+```
+
+Fields per symbol: `code` `market` `name` `price` `prev_close` `open` `high` `low` `change` `change_pct` `volume` `amount` `turnover` `pe` `pb` `market_cap` `suspended` `decimals`.
+When a symbol is suspended or has no price, `price` is `null` and `suspended` is `true`, so it cannot be confused with a real zero.
+
+The top level also carries `updated` (RFC3339), `source` (the data source currently serving), `count`, and `missing` (such as `hk/00700`) when some symbols could not be fetched.
+Volume units follow the market: lots for A-shares, shares for Hong Kong and US.
 
 ## Key bindings
 

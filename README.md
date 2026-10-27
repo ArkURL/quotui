@@ -51,9 +51,11 @@ go build -o quotui .
 ## 快速开始
 
 ```bash
-quotui                 # 打开 TUI
-quotui -once           # 抓一次行情，输出纯文本后退出
+quotui                  # 打开 TUI
+quotui -once            # 抓一次行情，输出纯文本后退出
+quotui -json            # 抓一次行情，输出 JSON（隐含 -once）
 quotui -config ./c.toml # 指定配置文件
+quotui -version         # 打印版本号
 ```
 
 首次启动会在系统配置目录生成默认配置并预置 6 只自选股：
@@ -61,6 +63,21 @@ quotui -config ./c.toml # 指定配置文件
 - macOS：`~/Library/Application Support/quotui/config.toml`
 - Linux：`~/.config/quotui/config.toml`
 - Windows：`%AppData%\quotui\config.toml`
+
+### 脚本化
+
+`-json` 输出结构化快照，可以直接交给 jq：
+
+```bash
+# 涨幅超过 5% 的标的
+quotui -json | jq -r '.quotes[] | select(.change_pct > 5) | "\(.name) \(.change_pct)%"'
+```
+
+每支标的的字段：`code` `market` `name` `price` `prev_close` `open` `high` `low` `change` `change_pct` `volume` `amount` `turnover` `pe` `pb` `market_cap` `suspended` `decimals`。
+停牌或无价时 `price` 为 `null` 且 `suspended` 为 `true`，不会和「跌到 0」混淆。
+
+顶层还有 `updated`（RFC3339）、`source`（当前生效的数据源）、`count`，以及取数失败时的 `missing`（如 `hk/00700`）。
+成交量单位随市场：A 股为手，港美股为股。
 
 ## 快捷键
 
