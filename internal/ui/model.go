@@ -24,6 +24,8 @@ const (
 	detailGap = 10 * time.Second
 	// klineGap 是 K 线的刷新间隔，日线级别不需要太勤。
 	klineGap = 30 * time.Second
+	// toastDuration 是右下角提示的停留时长。
+	toastDuration = 3 * time.Second
 	// backoffInterval 连续失败后的退避周期。
 	backoffInterval = 30 * time.Second
 )
@@ -65,6 +67,8 @@ type msgKline struct {
 	data   quote.Kline
 	at     time.Time
 }
+
+type msgToastExpired struct{ gen int }
 
 type msgKlineErr struct {
 	key    string
@@ -141,6 +145,7 @@ type Model struct {
 	showHelp      bool
 	toast         string
 	toastAt       time.Time
+	toastGen      int
 
 	add    addState
 	picker pickerState
@@ -200,9 +205,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				cmds = append(cmds, m.intradayCmd())
 			}
 		}
-		if m.toast != "" && time.Since(m.toastAt) > 3*time.Second {
-			m.toast = ""
-		}
 		return m, tea.Batch(cmds...)
 
 	case msgQuotes:
@@ -219,6 +221,13 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.loading = false
 		m.fetching = false
 		m.failStreak++
+		return m, nil
+
+	case msgToastExpired:
+		// 代际不符说明期间弹过新提示，旧定时器不该把它清掉。
+		if msg.gen == m.toastGen {
+			m.toast = ""
+		}
 		return m, nil
 
 	case msgKline:
@@ -320,15 +329,11 @@ func (m *Model) handleKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case " ":
 		m.paused = !m.paused
 		if m.paused {
-			m.toast = "已暂停刷新"
-		} else {
-			m.toast = "已恢复刷新"
-			m.toastAt = time.Now()
-			return m, m.fetchCmd()
+			return m, m.setToast("已暂停刷新")
 		}
-		m.toastAt = time.Now()
+		return m, tea.Batch(m.setToast("已恢复刷新"), m.fetchCmd())
 	case "s":
-		m.cycleSort()
+		return m, m.cycleSort()
 	case "S":
 		if m.sortBy != "order" {
 			m.sortDesc = !m.sortDesc
@@ -339,7 +344,7 @@ func (m *Model) handleKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "enter":
 		return m, m.openDetail()
 	case "d":
-		m.deleteCurrent(rows)
+		return m, m.deleteCurrent(rows)
 	case "J":
 		m.moveCurrent(1)
 	case "K":
@@ -351,22 +356,29 @@ func (m *Model) handleKey(k tea.KeyMsg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// setToast 显示一条临时提示，并在到点后自动恢复成帮助文案。
+// 用独立定时器而不是挂靠数据刷新，否则切到「仅手动」后就不会再有 tick 来清理。
+func (m *Model) setToast(text string) tea.Cmd {
+	m.toast = text
+	m.toastAt = time.Now()
+	m.toastGen++
+	gen := m.toastGen
+	return tea.Tick(toastDuration, func(time.Time) tea.Msg {
+		return msgToastExpired{gen: gen}
+	})
+}
+
 // manualFetch 手动刷新，带冷却与去重，避免连按导致请求风暴。
 func (m *Model) manualFetch() tea.Cmd {
 	if m.fetching {
-		m.toast = "正在刷新…"
-		m.toastAt = time.Now()
-		return nil
+		return m.setToast("正在刷新…")
 	}
 	if !m.lastRequestAt.IsZero() && time.Since(m.lastRequestAt) < manualGap {
-		m.toast = "刷新过于频繁，稍等一下"
-		m.toastAt = time.Now()
-		return nil
+		return m.setToast("刷新过于频繁，稍等一下")
 	}
 	cmd := m.fetchCmd()
 	if cmd == nil {
-		m.toast = "自选为空，按 a 添加"
-		m.toastAt = time.Now()
+		return m.setToast("自选为空，按 a 添加")
 	}
 	return cmd
 }
@@ -534,14 +546,15 @@ func (m *Model) applyRefreshPreset() tea.Cmd {
 
 	// 换周期：让旧的 tick 链失效，再按新周期重启。
 	m.tickGen++
-	m.toastAt = time.Now()
 
 	if sec == 0 {
-		m.toast = "已切换为手动刷新，按 r 拉取"
-		return nil
+		return m.setToast("已切换为手动刷新，按 r 拉取")
 	}
-	m.toast = fmt.Sprintf("刷新周期 %s", intervalLabel(sec))
-	return tea.Batch(m.tickCmd(), m.fetchCmd())
+	return tea.Batch(
+		m.setToast(fmt.Sprintf("刷新周期 %s", intervalLabel(sec))),
+		m.tickCmd(),
+		m.fetchCmd(),
+	)
 }
 
 // intervalLabel 把秒数转成展示文案。
@@ -649,29 +662,28 @@ func (m *Model) commitAdd() tea.Cmd {
 	m.cfg.Watchlist = append(m.cfg.Watchlist, sym)
 	m.sortBy = "order"
 	m.cursor = len(m.cfg.Watchlist) - 1
-	m.toast = "已添加 " + sym.Name
-	m.toastAt = time.Now()
 	_ = config.Save(m.path, m.cfg)
 	m.closeAdd()
-	return m.fetchCmd()
+	return tea.Batch(m.setToast("已添加 "+sym.Name), m.fetchCmd())
 }
 
-func (m *Model) deleteCurrent(rows []quote.Symbol) {
+func (m *Model) deleteCurrent(rows []quote.Symbol) tea.Cmd {
 	if m.cursor < 0 || m.cursor >= len(rows) {
-		return
+		return nil
 	}
 	target := rows[m.cursor].Key()
+	label := m.name(rows[m.cursor])
+
 	for i, s := range m.cfg.Watchlist {
 		if s.Key() == target {
 			m.cfg.Watchlist = append(m.cfg.Watchlist[:i], m.cfg.Watchlist[i+1:]...)
-			m.toast = "已删除 " + s.Name
-			m.toastAt = time.Now()
 			break
 		}
 	}
 	delete(m.quotes, target)
 	_ = config.Save(m.path, m.cfg)
 	m.clampCursor()
+	return m.setToast("已删除 " + label)
 }
 
 // moveCurrent 只在自定义顺序下有意义，调用后会切回自定义顺序。
@@ -691,7 +703,7 @@ func (m *Model) moveCurrent(delta int) {
 	}
 }
 
-func (m *Model) cycleSort() {
+func (m *Model) cycleSort() tea.Cmd {
 	order := []string{"order", "pct", "amount", "code"}
 	for i, k := range order {
 		if k == m.sortBy {
@@ -700,9 +712,8 @@ func (m *Model) cycleSort() {
 		}
 	}
 	m.sortDesc = m.sortBy == "pct" || m.sortBy == "amount"
-	m.toast = "排序: " + m.sortLabel()
-	m.toastAt = time.Now()
 	m.saveView()
+	return m.setToast("排序: " + m.sortLabel())
 }
 
 // quit 落盘界面状态后退出。

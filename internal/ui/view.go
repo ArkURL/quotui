@@ -296,7 +296,8 @@ func (m *Model) statusLine(th themeStyles) string {
 		rightPlain = "? 帮助  a 添加  d 删除  s 排序  t 周期"
 	}
 	rightStyle := th.dim
-	if m.toast != "" {
+	// 时间到了就不再渲染，即便定时器因故没有回来。
+	if m.toast != "" && time.Since(m.toastAt) < toastDuration {
 		rightPlain = m.toast
 		rightStyle = th.accent
 	}

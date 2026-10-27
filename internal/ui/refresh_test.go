@@ -38,7 +38,7 @@ func TestManualOnlyMode(t *testing.T) {
 
 	m = press(m, runeKey('t'))
 	m.picker.cursor = 0 // 仅手动
-	upd, cmd := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
+	upd, _ := m.Update(tea.KeyMsg{Type: tea.KeyEnter})
 	m = upd.(*Model)
 
 	if m.cfg.RefreshSeconds != 0 {
@@ -47,8 +47,9 @@ func TestManualOnlyMode(t *testing.T) {
 	if got := m.interval(); got != 0 {
 		t.Errorf("仅手动模式下 interval = %v，期望 0", got)
 	}
-	if cmd != nil {
-		t.Error("仅手动模式不应启动定时器")
+	// 返回值里可能有提示定时器，这里只关心没有触发请求、没有排 tick。
+	if m.fetching {
+		t.Error("切到仅手动不应触发请求")
 	}
 	if m.tickCmd() != nil {
 		t.Error("仅手动模式下不应再有 tick")
@@ -63,9 +64,9 @@ func TestManualRefreshCooldown(t *testing.T) {
 
 	// 刚请求过，连按 r 应被拦下
 	m.lastRequestAt = time.Now()
-	upd, cmd := m.Update(runeKey('r'))
+	upd, _ := m.Update(runeKey('r'))
 	m = upd.(*Model)
-	if cmd != nil {
+	if m.fetching {
 		t.Error("冷却期内不应发起请求")
 	}
 	if !strings.Contains(m.toast, "频繁") {
@@ -74,7 +75,7 @@ func TestManualRefreshCooldown(t *testing.T) {
 
 	// 冷却结束后可以手动刷新
 	m.lastRequestAt = time.Now().Add(-2 * time.Second)
-	upd, cmd = m.Update(runeKey('r'))
+	upd, cmd := m.Update(runeKey('r'))
 	m = upd.(*Model)
 	if cmd == nil {
 		t.Error("冷却结束后应允许刷新")
