@@ -52,10 +52,11 @@ changelog:
       order: 999
   filters:
     exclude:
-      - "^docs:"
-      - "^test:"
-      - "^chore:"
-      - "^ci:"
+      # 用前缀而非 "^chore:"，否则 chore(release): 这类带作用域的提交会漏网
+      - "^docs"
+      - "^test"
+      - "^chore"
+      - "^ci"
 
 release:
   footer: |
